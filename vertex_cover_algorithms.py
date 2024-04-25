@@ -25,7 +25,6 @@ def natural_greedy_algorithm(puzzle_input):
     lines = puzzle_input.split("\n")
     cover_vertices = set()
 
-
     return cover_vertices
 
 
