@@ -1,8 +1,8 @@
 # Vertex cover problem algorithms
-
 import time
+import numpy as np
 import os
-import pulp
+from scipy.optimize import linprog
 
 
 def read_file(name):
@@ -71,22 +71,25 @@ def linear_programing_algorithm(puzzle_input):
         edge_vertex1, edge_vertex2 = map(int, edge.split(" "))
         vertex_set.add(edge_vertex1)
         vertex_set.add(edge_vertex2)
+
     num_of_vertices = len(vertex_set)
+    num_of_edges = len([edge for edge in lines if edge])
 
-    linear_model = pulp.LpProblem(name="vertex-cover", sense=pulp.LpMinimize)
-    variables = [pulp.LpVariable(name=f"x{vertex}", cat=pulp.LpBinary) for vertex in range(1, num_of_vertices + 1)]
+    objective = np.ones(num_of_vertices)
+    ineq_left = np.zeros((num_of_edges, num_of_vertices))
+    ineq_right = np.ones(num_of_edges)
 
-    # Edge constraints
-    for edge in lines:
+    for i, edge in enumerate(lines):
         if not edge:
             continue
         edge_vertex1, edge_vertex2 = map(int, edge.split(" "))
-        linear_model += variables[edge_vertex1 - 1] + variables[edge_vertex2 - 1] >= 1
+        ineq_left[i, edge_vertex1 - 1] = 1
+        ineq_left[i, edge_vertex2 - 1] = 1
 
-    # Minimize
-    linear_model += pulp.lpSum(variables)
-    linear_model.solve(pulp.PULP_CBC_CMD(msg=False))
-    return int(linear_model.objective.value())
+    bounds = [(0, 1) for _ in range(num_of_vertices)]
+
+    result = linprog(c=objective, A_ub=ineq_left, b_ub=ineq_right, bounds=bounds, method='highs')
+    print(result)
 
 
 def run_all_algorithms(graph_path):
@@ -116,8 +119,8 @@ def run_all_algorithms(graph_path):
 if __name__ == "__main__":
     graph_list = os.listdir(r'./graphs')
     graph_list.sort()
-    # print(linear_programing_algorithm(f'./graphs/{graph_list[0]}'))
-    for graph in graph_list:
-        print(f"Running algorithms on graph {graph}.")
-        run_all_algorithms(f'./graphs/{graph}')
+    print(linear_programing_algorithm(read_file(f'./graphs/small_graph.graph')))
+    #for graph in graph_list:
+    #    print(f"Running algorithms on graph {graph}.")
+    #    run_all_algorithms(f'./graphs/{graph}')
     
