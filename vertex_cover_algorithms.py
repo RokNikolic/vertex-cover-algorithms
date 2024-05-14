@@ -1,8 +1,9 @@
 # Vertex cover problem algorithms
-import time
 import numpy as np
 import os
 from scipy.optimize import linprog
+from scipy import sparse
+from tabulate import tabulate
 
 
 def read_file(name):
@@ -72,55 +73,50 @@ def linear_programing_algorithm(puzzle_input):
         vertex_set.add(edge_vertex1)
         vertex_set.add(edge_vertex2)
 
-    num_of_vertices = len(vertex_set)
+    num_of_vertices = max(vertex_set)
     num_of_edges = len([edge for edge in lines if edge])
 
     objective = np.ones(num_of_vertices)
-    ineq_left = np.zeros((num_of_edges, num_of_vertices))
-    ineq_right = np.ones(num_of_edges)
+    ineq_right = -np.ones(num_of_edges)
 
+    row_indices = []
+    col_indices = []
+    data = []
     for i, edge in enumerate(lines):
         if not edge:
             continue
         edge_vertex1, edge_vertex2 = map(int, edge.split(" "))
-        ineq_left[i, edge_vertex1 - 1] = 1
-        ineq_left[i, edge_vertex2 - 1] = 1
+        row_indices.extend([i, i])
+        col_indices.extend([edge_vertex1-1, edge_vertex2-1])
+        data.extend([-1, -1])
 
+    sparce_ineq_left = sparse.csr_matrix((data, (row_indices, col_indices)), shape=(num_of_edges, num_of_vertices))
     bounds = [(0, 1) for _ in range(num_of_vertices)]
 
-    result = linprog(c=objective, A_ub=ineq_left, b_ub=ineq_right, bounds=bounds, method='highs')
-    print(result)
+    result = linprog(c=objective, A_ub=sparce_ineq_left, b_ub=ineq_right, bounds=bounds, method='highs')
+    vertex_cover = [1 if xi >= 0.5 else 0 for xi in result.x]
+
+    return [vertex for vertex in vertex_cover if vertex != 0], result.fun
 
 
 def run_all_algorithms(graph_path):
-    graph_read = read_file(graph_path)
+    graph_read = read_file(f'./graphs/{graph_path}')
 
-    start = time.perf_counter()
-    result = naive_algorithm(graph_read)
-    end = time.perf_counter()
-    print(f"Naive algorithm result length: {len(result)} computed in: {end - start :.3} seconds.")
-
-    start = time.perf_counter()
-    result = natural_greedy_algorithm(graph_read)
-    end = time.perf_counter()
-    print(f"Natural greedy algorithm result length: {len(result)} computed in: {end - start :.3} seconds.")
-
-    start = time.perf_counter()
-    result = greedy_apx2_algorithm(graph_read)
-    end = time.perf_counter()
-    print(f"Greedy apx2 algorithm result length: {len(result)} computed in: {end - start :.3} seconds.")
-
-    start = time.perf_counter()
-    result = linear_programing_algorithm(graph_read)
-    end = time.perf_counter()
-    print(f"Linear programming algorithm result length: {result} computed in: {end - start :.3} seconds.")
+    result1 = naive_algorithm(graph_read)
+    result2 = natural_greedy_algorithm(graph_read)
+    result3 = greedy_apx2_algorithm(graph_read)
+    result4, low_bound = linear_programing_algorithm(graph_read)
+    return [graph_path, len(result1), len(result2), len(result3), len(result4), int(low_bound)]
 
 
 if __name__ == "__main__":
     graph_list = os.listdir(r'./graphs')
     graph_list.sort()
-    print(linear_programing_algorithm(read_file(f'./graphs/small_graph.graph')))
-    #for graph in graph_list:
-    #    print(f"Running algorithms on graph {graph}.")
-    #    run_all_algorithms(f'./graphs/{graph}')
-    
+
+    result_data = []
+    for graph in graph_list:
+        print(f"Running algorithms on graph {graph}")
+        result_data.append(run_all_algorithms(graph))
+
+    col_names = ["Graph name", "Naive", "Greedy natural", "2APX Greedy", "2APX Linear prog", "Lower bound"]
+    print(tabulate(result_data, headers=col_names))
