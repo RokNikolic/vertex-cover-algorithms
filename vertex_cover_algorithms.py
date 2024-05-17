@@ -1,6 +1,8 @@
-# Vertex cover problem algorithms
-import numpy as np
+# Vertex cover problem algorithms 2024, github.com/RokNikolic
+
+import time
 import os
+import numpy as np
 from scipy.optimize import linprog
 from scipy import sparse
 from tabulate import tabulate
@@ -113,10 +115,13 @@ if __name__ == "__main__":
     graph_list = os.listdir(r'./graphs')
     graph_list.sort()
 
+    start = time.perf_counter()
     result_data = []
     for graph in graph_list:
         print(f"Running algorithms on graph {graph}")
         result_data.append(run_all_algorithms(graph))
+    end = time.perf_counter()
 
     col_names = ["Graph name", "Naive", "Greedy natural", "2APX Greedy", "2APX Linear prog", "Lower bound"]
     print(tabulate(result_data, headers=col_names))
+    print(f"All algorithms on all graphs computed in: {end - start :.3} seconds")
